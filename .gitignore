@@ -2,3 +2,6 @@
 *.log
 node_modules/
 .codex/
+
+# Research data - transcripts contain raw interview data with PII
+docs/research/transcripts/*.md

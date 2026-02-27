@@ -1,6 +1,7 @@
 import path from "path"
 import { copyDir, ensureDir, pathExists, readText, writeText } from "../utils/files"
 import { parseFrontmatter, formatFrontmatter } from "../utils/frontmatter"
+import { isValidSkillName } from "../utils/symlink"
 import { transformContentForOpenClaw } from "../converters/claude-to-openclaw"
 import type { OpenClawBundle } from "../types/openclaw"
 
@@ -23,7 +24,16 @@ export async function writeOpenClawBundle(
   // Copy pass-through skill directories and rewrite their SKILL.md bodies
   await Promise.all(
     bundle.skillDirs.map(async (skill) => {
+      if (!isValidSkillName(skill.name)) {
+        console.warn(`Warning: Skipping skill with unsafe name "${skill.name}".`)
+        return
+      }
       const targetDir = path.join(root, skill.name)
+      const resolved = path.resolve(targetDir)
+      if (!resolved.startsWith(path.resolve(root) + path.sep)) {
+        console.warn(`Warning: Skipping skill "${skill.name}" — resolved path escapes output root.`)
+        return
+      }
       await copyDir(skill.sourceDir, targetDir)
       await rewriteSkillBody(targetDir)
     }),

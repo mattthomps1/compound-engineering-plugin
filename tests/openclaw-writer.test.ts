@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test, spyOn } from "bun:test"
 import { promises as fs } from "fs"
 import path from "path"
 import os from "os"
@@ -114,6 +114,28 @@ Use Bash to run commands. Read the file at .claude/config.`
 
     await writeOpenClawBundle(tempRoot, bundle)
     expect(await exists(tempRoot)).toBe(true)
+  })
+
+  test("rejects skill directories with path traversal names", async () => {
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {})
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-traversal-"))
+
+    const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-source-"))
+    await fs.writeFile(path.join(sourceDir, "SKILL.md"), "---\nname: evil\n---\n\nEvil skill.")
+
+    const bundle: OpenClawBundle = {
+      generatedSkills: [],
+      skillDirs: [{ name: "../../etc/evil", sourceDir }],
+    }
+
+    await writeOpenClawBundle(tempRoot, bundle)
+
+    // Should not have written anything outside root
+    const skillsDir = path.join(tempRoot, "skills")
+    expect(await exists(path.join(skillsDir, "../../etc/evil", "SKILL.md"))).toBe(false)
+    expect(warnSpy).toHaveBeenCalled()
+
+    warnSpy.mockRestore()
   })
 
   test("writes multiple skills as separate directories", async () => {

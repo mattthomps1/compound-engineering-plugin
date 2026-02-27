@@ -344,4 +344,13 @@ Task best-practices-researcher(topic)`
     expect(result).toContain("the dhh-rails-reviewer rule")
     expect(result).not.toContain("@security-sentinel")
   })
+
+  test("transforms expanded @agent suffix references", () => {
+    const input = "Ask @schema-drift-detector and @ankane-readme-writer and @data-migration-expert and @every-style-editor."
+    const result = transformContentForCursor(input)
+    expect(result).toContain("the schema-drift-detector rule")
+    expect(result).toContain("the ankane-readme-writer rule")
+    expect(result).toContain("the data-migration-expert rule")
+    expect(result).toContain("the every-style-editor rule")
+  })
 })

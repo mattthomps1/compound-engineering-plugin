@@ -99,7 +99,7 @@ export function transformContentForGemini(body: string): string {
     .replace(/\.claude\//g, ".gemini/")
 
   // 3. Transform @agent-name references
-  const agentRefPattern = /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist))/gi
+  const agentRefPattern = /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist|detector|expert|writer|editor))/gi
   result = result.replace(agentRefPattern, (_match, agentName: string) => {
     return `the ${normalizeName(agentName)} skill`
   })

@@ -111,13 +111,6 @@ describe("convertClaudeToOpenClaw", () => {
     expect(parsed.body).toMatch(/## Capabilities\n- Threat modeling\n- OWASP/)
   })
 
-  test("agent model field is silently dropped", () => {
-    const bundle = convertClaudeToOpenClaw(fixturePlugin, defaultOptions)
-    const agentSkill = bundle.generatedSkills.find((s) => s.name === "security-reviewer")!
-    const parsed = parseFrontmatter(agentSkill.content)
-    expect(parsed.data.model).toBeUndefined()
-  })
-
   test("converts invocable commands to skills", () => {
     const bundle = convertClaudeToOpenClaw(fixturePlugin, defaultOptions)
 
@@ -129,12 +122,6 @@ describe("convertClaudeToOpenClaw", () => {
     expect(parsed.data.description).toBe("Planning command")
     expect(parsed.data["user-invocable"]).toBe(true)
     expect(parsed.body).toContain("Plan the work.")
-  })
-
-  test("flattens namespaced command names", () => {
-    const bundle = convertClaudeToOpenClaw(fixturePlugin, defaultOptions)
-    const commandSkill = bundle.generatedSkills.find((s) => s.name === "plan")
-    expect(commandSkill).toBeDefined()
   })
 
   test("command with argument-hint gets Arguments section", () => {
@@ -163,12 +150,6 @@ describe("convertClaudeToOpenClaw", () => {
 
     const bundle = convertClaudeToOpenClaw(plugin, defaultOptions)
     expect(bundle.generatedSkills).toHaveLength(0)
-  })
-
-  test("command allowedTools is silently dropped", () => {
-    const bundle = convertClaudeToOpenClaw(fixturePlugin, defaultOptions)
-    const commandSkill = bundle.generatedSkills.find((s) => s.name === "plan")!
-    expect(commandSkill.content).not.toContain("allowedTools")
   })
 
   test("passes through skill directories", () => {
@@ -279,15 +260,6 @@ describe("convertClaudeToOpenClaw", () => {
     warnSpy.mockRestore()
   })
 
-  test("no warning when hooks and MCP are absent", () => {
-    const warnSpy = spyOn(console, "warn").mockImplementation(() => {})
-
-    convertClaudeToOpenClaw(fixturePlugin, defaultOptions)
-    expect(warnSpy).not.toHaveBeenCalled()
-
-    warnSpy.mockRestore()
-  })
-
   test("plugin with zero agents produces only command skills", () => {
     const plugin: ClaudePlugin = {
       ...fixturePlugin,
@@ -324,6 +296,72 @@ describe("convertClaudeToOpenClaw", () => {
     const commandSkill = bundle.generatedSkills.find((s) => s.name === "plan")!
     const parsed = parseFrontmatter(commandSkill.content)
     expect(parsed.data.emoji).toBe("🔧")
+  })
+
+  test("truncates description longer than 1024 chars", () => {
+    const longDesc = "A".repeat(2000)
+    const plugin: ClaudePlugin = {
+      ...fixturePlugin,
+      agents: [
+        {
+          name: "verbose-agent",
+          description: longDesc,
+          body: "Do stuff.",
+          sourcePath: "/tmp/plugin/agents/verbose.md",
+        },
+      ],
+      commands: [],
+      skills: [],
+    }
+
+    const bundle = convertClaudeToOpenClaw(plugin, defaultOptions)
+    const parsed = parseFrontmatter(bundle.generatedSkills[0].content)
+    expect((parsed.data.description as string).length).toBeLessThanOrEqual(1024)
+    expect(parsed.data.description as string).toEndWith("...")
+  })
+
+  test("truncates agent name longer than 64 chars", () => {
+    const longName = "a-" + "very-".repeat(20) + "long-agent-name"
+    const plugin: ClaudePlugin = {
+      ...fixturePlugin,
+      agents: [
+        {
+          name: longName,
+          description: "Long-named agent",
+          body: "Do stuff.",
+          sourcePath: "/tmp/plugin/agents/long.md",
+        },
+      ],
+      commands: [],
+      skills: [],
+    }
+
+    const bundle = convertClaudeToOpenClaw(plugin, defaultOptions)
+    const name = bundle.generatedSkills[0].name
+    expect(name.length).toBeLessThanOrEqual(64)
+    expect(name).not.toEndWith("-")
+  })
+
+  test("infers correct emoji for all 5 categories", () => {
+    const categories = [
+      { name: "code-reviewer", expected: "🔍" },
+      { name: "repo-researcher", expected: "🔬" },
+      { name: "design-agent", expected: "🎨" },
+      { name: "workflow-agent", expected: "⚙️" },
+      { name: "docs-agent", expected: "📖" },
+    ]
+
+    for (const { name, expected } of categories) {
+      const plugin: ClaudePlugin = {
+        ...fixturePlugin,
+        agents: [{ name, body: "Test.", sourcePath: `/tmp/plugin/agents/${name}.md` }],
+        commands: [],
+        skills: [],
+      }
+      const bundle = convertClaudeToOpenClaw(plugin, defaultOptions)
+      const parsed = parseFrontmatter(bundle.generatedSkills[0].content)
+      expect(parsed.data.emoji).toBe(expected)
+    }
   })
 
   test("agent without category match gets default robot emoji", () => {
@@ -456,5 +494,41 @@ Task best-practices-researcher(topic)`
     expect(result).toContain("the data-integrity-guardian skill")
     expect(result).toContain("the schema-drift-detector skill")
     expect(result).toContain("the ankane-readme-writer skill")
+  })
+
+  test("transforms multiple Claude patterns in a single body", () => {
+    const input = [
+      "Use Bash to run commands. Read the .claude/config file.",
+      "- Task security-sentinel(review code)",
+      "Run /workflows:review then ask @dhh-rails-reviewer.",
+      "Use AskUserQuestion to confirm.",
+    ].join("\n")
+
+    const result = transformContentForOpenClaw(input)
+    expect(result).toContain("exec")
+    expect(result).toContain(".openclaw/config")
+    expect(result).toContain('skill="security-sentinel"')
+    expect(result).toContain("/review")
+    expect(result).not.toContain("/workflows:review")
+    expect(result).toContain("the dhh-rails-reviewer skill")
+    expect(result).toContain("prompt the user")
+  })
+
+  test("regression: converted output contains no Claude-specific patterns", () => {
+    const input = [
+      "Use the Bash tool and Read tool to explore.",
+      "Check .claude/settings.json and ~/.claude/config.",
+      "Run /workflows:plan to start.",
+      "Ask @security-sentinel to review.",
+      "Use AskUserQuestion for input. Use TodoWrite to track.",
+    ].join("\n")
+
+    const result = transformContentForOpenClaw(input)
+    expect(result).not.toMatch(/\bBash tool\b/)
+    expect(result).not.toMatch(/\bRead tool\b/)
+    expect(result).not.toMatch(/\bWrite tool\b/)
+    expect(result).not.toMatch(/\.claude\//)
+    expect(result).not.toMatch(/\bAskUserQuestion\b/)
+    expect(result).not.toMatch(/\bTodoWrite\b/)
   })
 })

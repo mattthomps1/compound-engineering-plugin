@@ -7,7 +7,6 @@ export type ClaudeToOpenClawOptions = ClaudeToOpenCodeOptions
 
 const OPENCLAW_DESCRIPTION_MAX_LENGTH = 1024
 const OPENCLAW_NAME_MAX_LENGTH = 64
-const OPENCLAW_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
 /**
  * Tool name map: Claude Code PascalCase tool names → OpenClaw equivalents.
@@ -76,10 +75,6 @@ export function convertClaudeToOpenClaw(
 function convertAgentToSkill(agent: ClaudeAgent, usedNames: Set<string>): OpenClawSkill {
   const name = uniqueName(normalizeName(agent.name), usedNames)
 
-  if (!isValidOpenClawName(name)) {
-    console.warn(`Warning: Agent "${agent.name}" produced invalid OpenClaw name "${name}". Skipping.`)
-  }
-
   const description = sanitizeDescription(
     agent.description ?? `Converted from Claude agent ${agent.name}`,
   )
@@ -115,12 +110,6 @@ function convertAgentToSkill(agent: ClaudeAgent, usedNames: Set<string>): OpenCl
 
 function convertCommandToSkill(command: ClaudeCommand, usedNames: Set<string>): OpenClawSkill {
   const name = uniqueName(flattenCommandName(command.name), usedNames)
-
-  if (!isValidOpenClawName(name)) {
-    console.warn(
-      `Warning: Command "${command.name}" produced invalid OpenClaw name "${name}". Skipping.`,
-    )
-  }
 
   const description = sanitizeDescription(
     command.description ?? `Converted from Claude command ${command.name}`,
@@ -162,19 +151,13 @@ function convertCommandToSkill(command: ClaudeCommand, usedNames: Set<string>): 
  * 6. inlineTools — AskUserQuestion/TodoWrite → prose
  */
 export function transformContentForOpenClaw(body: string): string {
-  const TRANSFORMS: Array<[string, (s: string) => string]> = [
-    ["toolNames", rewriteToolNames],
-    ["taskCalls", rewriteTaskCalls],
-    ["paths", rewritePaths],
-    ["slashCommands", rewriteSlashCommands],
-    ["agentRefs", rewriteAgentRefs],
-    ["inlineTools", rewriteInlineTools],
-  ]
-
   let result = body
-  for (const [, transform] of TRANSFORMS) {
-    result = transform(result)
-  }
+  result = rewriteToolNames(result)
+  result = rewriteTaskCalls(result)
+  result = rewritePaths(result)
+  result = rewriteSlashCommands(result)
+  result = rewriteAgentRefs(result)
+  result = rewriteInlineTools(result)
   return result
 }
 
@@ -250,10 +233,6 @@ function normalizeName(value: string): string {
     normalized = normalized.slice(0, OPENCLAW_NAME_MAX_LENGTH).replace(/-+$/, "")
   }
   return normalized || "item"
-}
-
-function isValidOpenClawName(name: string): boolean {
-  return OPENCLAW_NAME_PATTERN.test(name) && name.length <= OPENCLAW_NAME_MAX_LENGTH
 }
 
 function sanitizeDescription(value: string, maxLength = OPENCLAW_DESCRIPTION_MAX_LENGTH): string {

@@ -343,6 +343,15 @@ Task best-practices-researcher(topic)`
     expect(result).toContain("the security-sentinel skill")
     expect(result).not.toContain("@security-sentinel")
   })
+
+  test("transforms expanded @agent suffix references", () => {
+    const input = "Ask @schema-drift-detector and @ankane-readme-writer and @data-migration-expert and @every-style-editor."
+    const result = transformContentForGemini(input)
+    expect(result).toContain("the schema-drift-detector skill")
+    expect(result).toContain("the ankane-readme-writer skill")
+    expect(result).toContain("the data-migration-expert skill")
+    expect(result).toContain("the every-style-editor skill")
+  })
 })
 
 describe("toToml", () => {

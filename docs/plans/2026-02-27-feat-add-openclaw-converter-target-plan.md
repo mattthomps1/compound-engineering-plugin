@@ -247,8 +247,8 @@ When adding OpenClaw as a target, update all version references per the plugin v
 
 **Files to create:**
 
-- [ ] `src/types/openclaw.ts` — Define `OpenClawSkill`, `OpenClawSkillDir`, `OpenClawBundle`
-- [ ] `src/converters/claude-to-openclaw.ts` — Converter with content transformer
+- [x] `src/types/openclaw.ts` — Define `OpenClawSkill`, `OpenClawSkillDir`, `OpenClawBundle`
+- [x] `src/converters/claude-to-openclaw.ts` — Converter with content transformer
 
 **`src/types/openclaw.ts`:**
 
@@ -320,13 +320,13 @@ Follow `tests/cursor-converter.test.ts` fixture structure: create a minimal `Cla
 
 **Files to create:**
 
-- [ ] `src/targets/openclaw.ts` — Writer (flat output, no path resolution needed)
+- [x] `src/targets/openclaw.ts` — Writer (flat output, no path resolution needed)
 
 **Files to modify:**
 
-- [ ] `src/targets/index.ts` — Register OpenClaw target
-- [ ] `src/commands/convert.ts` — Add `openclaw` to CLI args, add `--openclaw-home` flag, update `resolveTargetOutputRoot()`
-- [ ] `src/commands/install.ts` — Add `openclaw` to CLI args
+- [x] `src/targets/index.ts` — Register OpenClaw target
+- [x] `src/commands/convert.ts` — Add `openclaw` to CLI args, add `--openclaw-home` flag, update `resolveTargetOutputRoot()`
+- [x] `src/commands/install.ts` — Add `openclaw` to CLI args
 
 **`src/targets/openclaw.ts` key function:**
 
@@ -351,8 +351,8 @@ The output is flat (`{root}/{name}/SKILL.md`). The `resolveOpenClawPaths()` func
 
 **Files to create:**
 
-- [ ] `tests/openclaw-converter.test.ts` — Converter + content transformer tests
-- [ ] `tests/openclaw-writer.test.ts` — Writer + path resolution tests
+- [x] `tests/openclaw-converter.test.ts` — Converter + content transformer tests
+- [x] `tests/openclaw-writer.test.ts` — Writer + path resolution tests
 
 **Converter test cases:**
 - Agent → skill conversion (frontmatter, description, emoji)

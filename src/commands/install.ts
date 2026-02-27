@@ -25,7 +25,7 @@ export default defineCommand({
     to: {
       type: "string",
       default: "opencode",
-      description: "Target format (opencode | codex | droid | cursor | pi | gemini)",
+      description: "Target format (opencode | codex | droid | cursor | pi | gemini | openclaw)",
     },
     output: {
       type: "string",
@@ -41,6 +41,11 @@ export default defineCommand({
       type: "string",
       alias: "pi-home",
       description: "Write Pi output to this Pi root (ex: ~/.pi/agent or ./.pi)",
+    },
+    openclawHome: {
+      type: "string",
+      alias: "openclaw-home",
+      description: "Write OpenClaw output to this root (ex: ~/.openclaw/skills)",
     },
     also: {
       type: "string",
@@ -84,6 +89,7 @@ export default defineCommand({
       const outputRoot = resolveOutputRoot(args.output)
       const codexHome = resolveTargetHome(args.codexHome, path.join(os.homedir(), ".codex"))
       const piHome = resolveTargetHome(args.piHome, path.join(os.homedir(), ".pi", "agent"))
+      const openclawHome = resolveTargetHome(args.openclawHome, path.join(os.homedir(), ".openclaw", "skills"))
 
       const options = {
         agentMode: String(args.agentMode) === "primary" ? "primary" : "subagent",
@@ -96,7 +102,7 @@ export default defineCommand({
         throw new Error(`Target ${targetName} did not return a bundle.`)
       }
       const hasExplicitOutput = Boolean(args.output && String(args.output).trim())
-      const primaryOutputRoot = resolveTargetOutputRoot(targetName, outputRoot, codexHome, piHome, hasExplicitOutput)
+      const primaryOutputRoot = resolveTargetOutputRoot(targetName, outputRoot, codexHome, piHome, openclawHome, hasExplicitOutput)
       await target.write(primaryOutputRoot, bundle)
       console.log(`Installed ${plugin.manifest.name} to ${primaryOutputRoot}`)
 
@@ -117,7 +123,7 @@ export default defineCommand({
           console.warn(`Skipping ${extra}: no output returned.`)
           continue
         }
-        const extraRoot = resolveTargetOutputRoot(extra, path.join(outputRoot, extra), codexHome, piHome, hasExplicitOutput)
+        const extraRoot = resolveTargetOutputRoot(extra, path.join(outputRoot, extra), codexHome, piHome, openclawHome, hasExplicitOutput)
         await handler.write(extraRoot, extraBundle)
         console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
       }
@@ -174,10 +180,12 @@ function resolveTargetOutputRoot(
   outputRoot: string,
   codexHome: string,
   piHome: string,
+  openclawHome: string,
   hasExplicitOutput: boolean,
 ): string {
   if (targetName === "codex") return codexHome
   if (targetName === "pi") return piHome
+  if (targetName === "openclaw") return openclawHome
   if (targetName === "droid") return path.join(os.homedir(), ".factory")
   if (targetName === "cursor") {
     const base = hasExplicitOutput ? outputRoot : process.cwd()

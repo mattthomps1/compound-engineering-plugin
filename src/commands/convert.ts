@@ -23,7 +23,7 @@ export default defineCommand({
     to: {
       type: "string",
       default: "opencode",
-      description: "Target format (opencode | codex | droid | cursor | pi | gemini)",
+      description: "Target format (opencode | codex | droid | cursor | pi | gemini | openclaw)",
     },
     output: {
       type: "string",
@@ -39,6 +39,11 @@ export default defineCommand({
       type: "string",
       alias: "pi-home",
       description: "Write Pi output to this Pi root (ex: ~/.pi/agent or ./.pi)",
+    },
+    openclawHome: {
+      type: "string",
+      alias: "openclaw-home",
+      description: "Write OpenClaw output to this root (ex: ~/.openclaw/skills)",
     },
     also: {
       type: "string",
@@ -80,6 +85,7 @@ export default defineCommand({
     const outputRoot = resolveOutputRoot(args.output)
     const codexHome = resolveTargetHome(args.codexHome, path.join(os.homedir(), ".codex"))
     const piHome = resolveTargetHome(args.piHome, path.join(os.homedir(), ".pi", "agent"))
+    const openclawHome = resolveTargetHome(args.openclawHome, path.join(os.homedir(), ".openclaw", "skills"))
 
     const options = {
       agentMode: String(args.agentMode) === "primary" ? "primary" : "subagent",
@@ -87,7 +93,7 @@ export default defineCommand({
       permissions: permissions as PermissionMode,
     }
 
-    const primaryOutputRoot = resolveTargetOutputRoot(targetName, outputRoot, codexHome, piHome)
+    const primaryOutputRoot = resolveTargetOutputRoot(targetName, outputRoot, codexHome, piHome, openclawHome)
     const bundle = target.convert(plugin, options)
     if (!bundle) {
       throw new Error(`Target ${targetName} did not return a bundle.`)
@@ -113,7 +119,7 @@ export default defineCommand({
         console.warn(`Skipping ${extra}: no output returned.`)
         continue
       }
-      const extraRoot = resolveTargetOutputRoot(extra, path.join(outputRoot, extra), codexHome, piHome)
+      const extraRoot = resolveTargetOutputRoot(extra, path.join(outputRoot, extra), codexHome, piHome, openclawHome)
       await handler.write(extraRoot, extraBundle)
       console.log(`Converted ${plugin.manifest.name} to ${extra} at ${extraRoot}`)
     }
@@ -140,9 +146,10 @@ function resolveOutputRoot(value: unknown): string {
   return process.cwd()
 }
 
-function resolveTargetOutputRoot(targetName: string, outputRoot: string, codexHome: string, piHome: string): string {
+function resolveTargetOutputRoot(targetName: string, outputRoot: string, codexHome: string, piHome: string, openclawHome: string): string {
   if (targetName === "codex") return codexHome
   if (targetName === "pi") return piHome
+  if (targetName === "openclaw") return openclawHome
   if (targetName === "droid") return path.join(os.homedir(), ".factory")
   if (targetName === "cursor") return path.join(outputRoot, ".cursor")
   if (targetName === "gemini") return path.join(outputRoot, ".gemini")
